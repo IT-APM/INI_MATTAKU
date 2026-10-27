@@ -1,0 +1,408 @@
+<?php $__env->startSection('title', 'Biaya Perjalanan Dinas'); ?>
+
+<?php $__env->startSection('css'); ?>
+<link rel="stylesheet" type="text/css" href="<?php echo e(asset('assets/css/vendors/sweetalert2.css')); ?>">
+<link rel="stylesheet" type="text/css" href="<?php echo e(asset('assets/css/vendors/select2.css')); ?>">
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('style'); ?>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('breadcrumb-title'); ?>
+<h3>
+    <?php if($data['luar_dalam'] == 'reimburse'): ?> Reimbursement Dalam Negeri
+    <?php elseif($data['luar_dalam'] == 'reimburse_luar'): ?> Reimbursement Luar Negeri
+    <?php endif; ?>
+</h3>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('breadcrumb-items'); ?>
+<li class="breadcrumb-item">Biaya Perjalanan Dinas</li>
+<li class="breadcrumb-item active"><?php if($data['status'] == 'insert'): ?> Add <?php else: ?> Edit <?php endif; ?></li>
+<?php $__env->stopSection(); ?>
+<?php $__env->startSection('content'); ?>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-12 col-xl-12">
+            <div class="card">
+            <?php if(Session::has('msg')): ?>
+                <div class="alert alert-success dark alert-dismissible fade show" role="alert">
+                    <h6><?php echo e(session('msg')); ?></h6>
+                    <button class="btn-close" type="button" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php endif; ?>
+                <?php if(Session::has('error')): ?>
+                <div class="alert alert-danger dark alert-dismissible fade show" role="alert">
+                    <?php echo session('error'); ?>
+
+                    <button class="btn-close" type="button" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php endif; ?>
+                <?php if(count($errors) > 0): ?>
+                <div class="alert alert-danger dark alert-dismissible fade show" role="alert">
+                    <h6>Upload image is ERROR</h6>
+                    <ul>
+                        <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <li><?php echo e($error); ?></li>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </ul>
+                    <button class="btn-close" type="button" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php endif; ?>
+                <div class="card-body">
+                    <?php if($data['status'] == 'update'): ?>
+                    <h5>Catatan Penolakan</h5>
+                    <div class="row mb-3">
+                        <div class="col-sm-12">
+                            <textarea class="form-control" rows="4"><?php echo e($catatan); ?></textarea>
+                        </div>
+                    </div>
+                    <hr />
+                    <?php endif; ?>
+                    <h5>Pelaksana Perjalanan Dinas</h5>
+                    <?php
+                    $pengaju_property = json_decode($data['pengaju_property'], true);
+                    $atasan_property = json_decode($data['atasan_property'], true);
+                    ?>
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label">Nama / NIP Karyawan</label>
+                            <input class="form-control" value="<?php echo e($pengaju_property['nama']); ?> / <?php echo e($pengaju_property['nik']); ?>">
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label">Nama / NIP Atasan Langsung</label>
+                            <input class="form-control" value="<?php echo e($atasan_property['nama']); ?> / <?php echo e($atasan_property['nik']); ?>">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label">Level</label>
+                            <input class="form-control" value="<?php echo e($pengaju_property['id_level']); ?> - <?php echo e($pengaju_property['level']); ?>">
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label">Jabatan</label>
+                            <input class="form-control" value="<?php echo e($pengaju_property['jabatan']); ?>">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label">Perusahaan</label>
+                            <input class="form-control" value="<?php echo e($pengaju_property['perusahaan']); ?>">
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label">Direktorat</label>
+                            <input class="form-control" value="<?php echo e($pengaju_property['divisi']); ?>">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label">Divisi</label>
+                            <input class="form-control" value="<?php echo e($pengaju_property['dep']); ?>">
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label">Departemen</label>
+                            <input class="form-control" value="<?php echo e($pengaju_property['sub_dep']); ?>">
+                        </div>
+                    </div>
+                    <hr />
+                    <h5>Informasi Perjalanan Dinas</h5>
+                    <div class="row mb-3">
+                        <div class="col-sm-4">
+                            <label class="form-label">Tahun Pengajuan</label>
+                            <input class="form-control" value="<?php echo e($data['periode']); ?>">
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label">Golongan</label>
+                            <input class="form-control" value="<?php if($data['is_leader']==1): ?> Leader <?php elseif($data['is_leader']==2): ?> Member <?php elseif($data['is_leader']==3): ?> Management <?php endif; ?>">
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label">Kelompok Perjalanan Dinas</label>
+                            <input class="form-control" value="Project: <?php echo e($data['kelompok']['project']); ?> / Corporate: <?php echo e($data['kelompok']['nonproject']); ?>">
+                        </div>
+                    </div>
+                    <form action="<?php echo e(route('bpd.store')); ?>" method="post" enctype="multipart/form-data" class="needs-validation" novalidate="" onsubmit="return confirm('Are you sure want to submit this data?');">
+                        <?php echo csrf_field(); ?>
+                        <input type="hidden" id="new" name="new" value="<?php echo e($data['luar_dalam']); ?>">
+                        <input type="hidden" id="mgt" name="mgt" value="<?php echo e($data['mgt']); ?>">
+                        <input type="hidden" id="status" name="status" value="<?php echo e($data['status']); ?>">
+                        <?php if($data['status'] == 'update'): ?>
+                        <input type="hidden" id="id_trx" name="id_trx" value="<?php echo e(Crypt::encrypt($trxMaster->id)); ?>">
+                        <?php endif; ?>
+                        <!-- <hr /> -->
+                        <div class="row mb-3">
+                            <div class="table-responsive">
+                                <table class="table" id="table_info">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">#</th>
+                                            <th scope="col">Tujuan</th>
+                                            <?php if($data['luar_dalam'] == 'reimburse'): ?>
+                                            <th scope="col">&nbsp;</th>
+                                            <?php endif; ?>
+                                            <th scope="col">Tanggal dari</th>
+                                            <th scope="col">Tanggal sampai</th>
+                                            <th scope="col"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if($data['status'] == 'update'): ?>
+                                        <?php $__currentLoopData = $trxDetailInfo; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $_data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <tr>
+                                            <td>#</td>
+                                            <?php if($trxMaster->luar_dalam=='reimburse'): ?>
+                                            <td><?php echo e($_data->_tujuan1_dalam->propinsi); ?> (<?php echo e(\Carbon\Carbon::parse($_data->tanggal_mulai)->diffInDays(\Carbon\Carbon::parse($_data->tanggal_akhir))+1); ?> Hari)</td>
+                                            <td><?php echo e($_data->_tujuan2_dalam->kota); ?></td>
+                                            <?php elseif($trxMaster->luar_dalam=='reimburse_luar'): ?>
+                                            <td><?php echo e($_data->_tujuan1_luar->negara); ?> (<?php echo e(\Carbon\Carbon::parse($_data->tanggal_mulai)->diffInDays(\Carbon\Carbon::parse($_data->tanggal_akhir))+1); ?> Hari)</td>
+                                            <td>&nbsp;</td>
+                                            <?php endif; ?>
+                                            <td><?php echo e(\Carbon\Carbon::parse($_data->tanggal_mulai)->format('d-m-Y')); ?></td>
+                                            <td><?php echo e(\Carbon\Carbon::parse($_data->tanggal_akhir)->format('d-m-Y')); ?></td>
+                                            <td><a onclick="return confirm('Are you sure want to delete this data?')" href="<?php echo e(route('bpd.delete_info', [Crypt::encrypt($trxMaster->id), 'id_data'=>$_data->id, 'view'=>'reject_reimburse_pa'])); ?>" class="btn btn-danger"><i class="fa fa-trash"></i></a></td>
+                                        </tr>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                        <?php else: ?>
+                                        <tr>
+                                            <th scrope="row">1</th>
+                                            <?php if($data['luar_dalam'] == 'reimburse'): ?>
+                                            <td>
+                                                <select onchange="getData(1);" class="form-select js-example-basic-single col-sm-12" id="tujuan1_1" name="tujuan1_1" required="">
+                                                    <option selected="" disabled="" value="">Pilih...</option>
+                                                    <?php $__currentLoopData = $area; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $_data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <option value="<?php echo e($_data->id); ?>"><?php echo e($_data->propinsi); ?></option>
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                                </select>
+                                                <div class="invalid-feedback txt-danger">Field is required.</div>
+                                            </td>
+                                            <td>
+                                                <select class="form-select js-example-basic-single col-sm-12" id="tujuan2_1" name="tujuan2_1" required=""></select>
+                                                <div class="invalid-feedback txt-danger">Field is required.</div>
+                                            </td>
+                                            <?php elseif($data['luar_dalam'] == 'reimburse_luar'): ?>
+                                            <td>
+                                                <select class="form-select js-example-basic-single col-sm-12" id="tujuan1_1" name="tujuan1_1" required="">
+                                                    <option selected="" disabled="" value="">Pilih...</option>
+                                                    <?php $__currentLoopData = $negara; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $_data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <option value="<?php echo e($_data->id); ?>"><?php echo e($_data->negara); ?></option>
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                                </select>
+                                                <div class="invalid-feedback txt-danger">Field is required.</div>
+                                            </td>
+                                            <?php endif; ?>
+                                            <td><input class="form-control" type="date" name="tanggal_mulai[]" id="tanggal_mulai[]" placeholder="Tanggal dari" required=""></td>
+                                            <td><input class="form-control" type="date" name="tanggal_akhir[]" id="tanggal_akhir[]" placeholder="Tanggal sampai" required=""></td>
+                                            <td>&nbsp;</td>
+                                        </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mb-3 col-md-2">
+                            <a class="btn btn-primary" id="insertRowinfo" href="#">Add new</a>
+                        </div>
+                        <hr />
+                        <h5>Biaya Perjalanan Dinas</h5>
+                        <div class="row mb-3">
+                            <div class="table-responsive">
+                                <table class="table" id="table_biaya">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">#</th>
+                                            <th scope="col" width="30%">Biaya</th>
+                                            <th scope="col">Satuan</th>
+                                            <th scope="col">Nominal</th>
+                                            <th scope="col">Lampiran<br/>*Maksimal 2MB dengan format pdf atau gambar(jpg, jpeg dan png)</th>
+                                            <th scope="col"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if($data['status'] == 'update'): ?>
+                                        <?php $__currentLoopData = $trxDetailBiaya; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $_data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <tr>
+                                            <td>#</td>
+                                            <td><?php echo e($_data->biaya); ?></td>
+                                            <td><?php echo e($_data->satuan); ?></td>
+                                            <td><?php echo e(number_format($_data->nominal, 0)); ?></td>
+                                            <td><a href="<?php echo e(asset('assets/bpd/'.$_data->lampiran)); ?>" target="_blank"><i class="icon-file"></i></td>
+                                            <td><a onclick="return confirm('Are you sure want to delete this data?')" href="<?php echo e(route('bpd.delete_biaya', [Crypt::encrypt($trxMaster->id), 'id_data'=>$_data->id, 'view'=>'reject_reimburse_pa'])); ?>" class="btn btn-danger"><i class="fa fa-trash"></i></a></td>
+                                        </tr>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                        <?php endif; ?>
+                                        <!-- <tr>
+                                            <th scrope="row">1</th>
+                                            <td><input class="form-control" type="text" name="biaya[]" id="biaya[]" placeholder="Biaya" required=""></td>
+                                            <td>
+                                                <select class="form-select col-sm-12" id="satuan[]" name="satuan[]" required="">
+                                                    <option selected="" disabled="" value="">Pilih...</option>
+                                                    <option value="IDR">IDR</option>
+                                                    <option value="USD">USD</option>
+                                                </select>
+                                            </td>
+                                            <td><input onfocus="use_number(this)" onblur="use_text(this)" min=1 type="number" name="nominal_1" id="nominal_1" class="form-control numbers" required=""></td>
+                                            <td>&nbsp;</td>
+                                        </tr> -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mb-3 col-md-2">
+                            <a class="btn btn-primary" id="insertRowbiaya" href="#">Add new</a>
+                        </div>
+                        <hr />
+                        <div class="row mb-3">
+                            <div class="col-sm-6">
+                                <label class="form-label">Uraian Tugas Perjalanan Dinas</label>
+                                <textarea class="form-control" id="uraian" name="uraian" rows="2" required=""><?php if($data['status'] == 'update'): ?> <?php echo e($trxMaster->uraian); ?> <?php endif; ?></textarea>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label">Lampiran<br/>*Maksimal 2MB dengan format pdf atau gambar(jpg, jpeg dan png)</label>
+                                <input name="lampiran" id="lampiran" class="form-control" type="file" required="">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <button class="btn btn-success" type="submit">Submit</button> | <a href="<?php echo e(route('bpd.index')); ?>" class="btn btn-warning" type="button">Back</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('script'); ?>
+<script src="<?php echo e(asset('assets/js/form-validation-custom.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/sweet-alert/sweetalert.min.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/sweet-alert/app.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/select2/select2.full.min.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/select2/select2-custom.js')); ?>"></script>
+<script type="text/javascript">
+    // get data kota filter by propinsi
+    function getData(_id) {
+        // alert(_id);
+        $('#tujuan2_' + _id).find('option').remove();
+        $("#tujuan2_" + _id).append('<option selected="" disabled="" value="">Pilih...</option>');
+        var id = $("#tujuan1_" + _id).val();
+        $.ajax({
+            // url: _url + '/matta/kebutuhan/kota/' + id,
+            url: "<?php echo e(route('kebutuhan_kota')); ?>" + "/" + id,
+            type: 'get',
+            dataType: 'json',
+            success: function (response) {
+                // alert(response);
+                var len = 0;
+                if (response['kota'] != null) {
+                    len = response['kota'].length;
+                }
+                if (len > 0) {
+                    // Read data and create <option >
+                    for (var i = 0; i < len; i++) {
+                        var id = response['kota'][i].id;
+                        var kota = response['kota'][i].kota;
+                        var option = "<option value='" + id + "'>" + kota + "</option>";
+                        $("#tujuan2_" + _id).append(option);
+                    }
+                }
+            }
+        });
+    }
+    // 
+    $(document).ready(function () {
+        // Biaya Perjalanan Dinas
+        var counter_biaya = 1;
+        $("#insertRowbiaya").on("click", function (event) {
+            event.preventDefault();
+            var newRow = $('<tr  id="tr_biaya">');
+            var cols = '';
+            // Table columns
+            cols += '<th scrope="row">' + counter_biaya + '</th>';
+            cols += '<td><input class="form-control" type="text" name="biaya[]" id="biaya[]" placeholder="Biaya" required=""></td>';
+            cols += '<td><select class="form-select col-sm-12" id="satuan[]" name="satuan[]" required=""><option selected="" disabled="" value="">Pilih...</option><option value="IDR">IDR</option><option value="USD">USD</option></select></td>';
+            cols += '<td><input onfocus="use_number(this)" onblur="use_text(this)" min=1 type="number" name="nominal_' + counter_biaya + '" id="nominal_' + counter_biaya + '" class="form-control numbers" required=""></td>';
+            cols += '<td><input name="lampiran_' + counter_biaya + '" id="lampiran_' + counter_biaya + '" class="form-control" type="file" required=""></td>';
+            cols += '<td><button class="btn btn-danger" id ="deleteRowbiaya"><i class="fa fa-trash"></i></button></td>';
+            // Insert the columns inside a row
+            newRow.append(cols);
+            // Insert the row inside a table
+            $("#table_biaya").append(newRow);
+            // Increase counter_biaya after each row insertion
+            counter_biaya++;
+        });
+        // Remove row when delete btn is clicked
+        $("#table_biaya").on("click", "#deleteRowbiaya", function (event) {
+            $(this).closest("tr").remove();
+            // counter_biaya -= 1;
+        });
+        // 
+        // Informasi Perjalanan Dinas
+        var counter_info = 2;
+        $("#insertRowinfo").on("click", function (event) {
+            event.preventDefault();
+            var newRow = $('<tr  id="tr_info">');
+            var cols = '';
+            // Table columns
+            cols += '<th scrope="row">' + counter_info + '</th>';
+            // reimburse
+            <?php if($data['luar_dalam'] == 'reimburse'): ?>
+            cols += '<td><select onchange="getData(' + counter_info + ');" class="form-select js-example-basic-single col-sm-12" id="tujuan1_' + counter_info + '" name="tujuan1_' + counter_info + '" required=""><option selected="" disabled="" value="">Pilih...</option><?php $__currentLoopData = $area; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $_data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($_data->id); ?>"><?php echo e($_data->propinsi); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select><div class="invalid-feedback txt-danger">Field is required.</div></td>';
+            cols += '<td><select class="form-select js-example-basic-single col-sm-12" id="tujuan2_' + counter_info + '" name="tujuan2_' + counter_info + '" required=""></select><div class="invalid-feedback txt-danger">Field is required.</div></td>';
+            // reimburse_luar
+            <?php elseif($data['luar_dalam'] == 'reimburse_luar'): ?>
+            cols += '<td><select class="form-select js-example-basic-single col-sm-12" id="tujuan1_' + counter_info + '" name="tujuan1_' + counter_info + '" required=""><option selected="" disabled="" value="">Pilih...</option><?php $__currentLoopData = $negara; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $_data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($_data->id); ?>"><?php echo e($_data->negara); ?></option> <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select><div class="invalid-feedback txt-danger">Field is required.</div></td>';
+            <?php endif; ?>
+            cols += '<td><input class="form-control" type="date" name="tanggal_mulai[]" id="tanggal_mulai[]" placeholder="Tanggal dari" required=""></td>';
+            cols += '<td><input class="form-control" type="date" name="tanggal_akhir[]" id="tanggal_akhir[]" placeholder="Tanggal sampai" required=""></td>';
+            cols += '<td><button class="btn btn-danger" id ="deleteRowinfo"><i class="fa fa-trash"></i></button></td>';
+            // Insert the columns inside a row
+            newRow.append(cols);
+            // Insert the row inside a table
+            $("#table_info").append(newRow);
+            <?php if($data['luar_dalam'] == 'reimburse'): ?>
+            $('#tujuan1_' + counter_info).select2();
+            $('#tujuan2_' + counter_info).select2();
+            <?php elseif($data['luar_dalam'] == 'reimburse_luar'): ?>
+            $('#tujuan1_' + counter_info).select2();
+            <?php endif; ?>
+            // Increase counter_info after each row insertion
+            counter_info++;
+            // if (counter_info > 6) {
+            //     alert('Maksimal hanya 5 record!');
+            //     // $("tr").remove();
+            //     $('table#table_info tr#tr_info').remove();
+            //     counter_info = 2;
+            // }
+        });
+        // Remove row when delete btn is clicked
+        $("#table_info").on("click", "#deleteRowinfo", function (event) {
+            $(this).closest("tr").remove();
+            // counter_info -= 1;
+        });
+    });
+    // 
+    function use_number(node) {
+        var empty_val = false;
+        const value = node.value;
+        if (node.value == '')
+            empty_val = true;
+        node.type = 'number';
+        if (!empty_val)
+            node.value = Number(value.replace(/,/g, '')); // or equivalent per locale
+    }
+
+    function use_text(node) {
+        var empty_val = false;
+        const value = Number(node.value);
+        if (node.value == '')
+            empty_val = true;
+        node.type = 'text';
+        if (!empty_val)
+            node.value = value.toLocaleString('en'); // or other formatting
+    }
+
+</script>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.simple.master', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\matta\resources\views/formulir/bpd/reimburse.blade.php ENDPATH**/ ?>

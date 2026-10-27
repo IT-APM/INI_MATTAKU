@@ -1,0 +1,676 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use App\Models\WorkingDay;
+use App\Models\Karyawan;
+use App\Models\JadwalClsShift;
+use App\Models\JadwalCls;
+use Carbon\Carbon;
+use DB;
+
+class JadwalClsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+        if(Gate::allows('hc_nkp')){
+            return redirect()->route('error-403');
+        }
+        $no = 0;
+        $tahun = Carbon::parse(now())->format('Y');
+        // 11 = CLS Group
+        $where = ['wg_id' => 11];
+        $trx = WorkingDay::where($where)->whereYear('working_date', $tahun)->orderBy( 'working_date', 'desc' )->orderBy( 'clockin', 'asc' )->get();
+        // filter parameter
+        $_arr_nik_karyawan = WorkingDay::select('nik')->where($where)->distinct()->get();
+        $arr_nik_karyawan = array();
+        $date_from = '';
+        $date_to = '';
+        foreach ($_arr_nik_karyawan as $data){
+            array_push($arr_nik_karyawan, $data->nik);
+        }
+        $nik_karyawan = Karyawan::select('nik','nama')->whereIn('nik', $arr_nik_karyawan)->orderBy('nama', 'asc')->get();
+        // return response()->json( [ 'nik_karyawan' => $nik_karyawan ], 200 );
+        // start filter
+        if($request->filter == true){
+            $_nik_karyawan = $request->input('nik_karyawan', []);
+            $date_from = $request->date_from;
+            $date_to = $request->date_to;
+            // 
+            if(count($_nik_karyawan) > 0){
+                $arr_nik_karyawan = $_nik_karyawan;
+            }
+            else{
+                $arr_nik_karyawan = array();
+            }
+            $trx = WorkingDay::where($where)->whereIn('nik', $arr_nik_karyawan)->whereBetween('working_date', [$date_from, $date_to])->orderBy( 'working_date', 'desc' )->orderBy( 'clockin', 'asc' )->get();
+        }else{
+            $arr_nik_karyawan = array();
+        }
+        // end filter
+        if($request->kecuali == 'true'){
+            // dd($request->all());
+            $wn_id = 1;
+            $startP = '00:00:00';
+            $endP = '08:00:00';
+            $startS = '08:00:00';
+            $endS = '16:00:00';
+            $startM = '16:00:00';
+            $endM = '00:00:00';
+            $arr_tanggal = array();
+            $tanggal_awal = $request->tanggal_awal;
+            $tanggal_akhir = $request->tanggal_akhir;
+            array_push($arr_tanggal, $tanggal_awal);
+            $arr_wg_id = explode(',', $request->wg_id);
+            $arr_nik = explode(',', $request->nik);
+            while (strtotime($tanggal_awal) < strtotime($tanggal_akhir)) {
+                $tanggal_awal = date ("Y-m-d", strtotime("+1 days", strtotime($tanggal_awal)));
+                array_push($arr_tanggal, $tanggal_awal);
+            }
+            $data = $request->all();
+            $arr_data = array();
+            $_arr_data = array();
+            foreach($arr_tanggal as $_tanggal){
+                foreach($data as $_id => $value){
+                    if($_id == intval(explode('-', $_tanggal)[2])){
+                        array_push($arr_data, $value);
+                    }
+                }
+            }
+            // dd($arr_data);
+            for ($x = 0; $x < sizeof($arr_tanggal); $x++) {
+                $_arr_data = explode(',', $arr_data[$x]);
+                for ($y = 0; $y < sizeof($_arr_data); $y++) {
+                    $this->deleteData($arr_nik[$y], $arr_tanggal[$x], $arr_tanggal[$x]);
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($_arr_data[$y]=='P'){
+                        $wd_start_datetime = $arr_tanggal[$x].' '.$startP;
+                        $wd_finish_datetime = $arr_tanggal[$x].' '.$endP;
+                    }elseif($_arr_data[$y]=='S'){
+                        $wd_start_datetime = $arr_tanggal[$x].' '.$startS;
+                        $wd_finish_datetime = $arr_tanggal[$x].' '.$endS;
+                    }elseif($_arr_data[$y]=='M'){
+                        $wd_start_datetime = $arr_tanggal[$x].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr_tanggal[$x]))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    // dd($wg_id, $wn_id, $arr_tanggal[$x], $arr_nik[$y], $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    if($_arr_data[$y]!='L'){
+                        $this->insertData($arr_wg_id[$y], $wn_id, $arr_tanggal[$x], $arr_nik[$y], $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                }
+            }
+        }
+        return view( 'master.jadwal.cls.index', compact( 'trx', 'no', 'date_from', 'date_to', 'nik_karyawan', 'arr_nik_karyawan' ) );
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        if(Gate::allows('hc_nkp')){
+            return redirect()->route('error-403');
+        }
+        // 11 = CLS Group
+        $status = 'create';
+        $where = ['is_aktif' => 1, 'wg_id'=>11];
+        $karyawan = Karyawan::select('nik', 'nama')->where($where)->orderBy('nama', 'asc')->get();
+        $shift = JadwalClsShift::orderBy('id', 'asc')->get();
+        return view( 'master.jadwal.cls.upsert', compact('karyawan', 'shift', 'status') );
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        //
+        // return response()->json( [ 'request' => $request->all() ], 200 );
+        $trx = New JadwalCls;
+        $trx->nik = $request->nik;
+        $trx->id_shift = $request->id_shift;
+        // $trx->tanggal_awal = $request->tanggal_awal;
+        // $trx->tanggal_akhir = $request->tanggal_akhir;
+        $trx->save();
+        return redirect( 'jadwalcls/0' )->with( 'msg', 'Data is saved successfully.' );
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        if(Gate::allows('hc_nkp')){
+            return redirect()->route('error-403');
+        }
+        $no = 0;
+        // 11 = CLS Group
+        $trx = JadwalCls::orderBy( 'id_shift', 'asc' )->get();
+        return view( 'master.jadwal.cls._index', compact('trx', 'no') );
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        if(Gate::allows('hc_nkp')){
+            return redirect()->route('error-403');
+        }
+        $status = 'edit';
+        $trx = JadwalCls::find( $id );
+        $where = ['is_aktif' => 1, 'wg_id'=>11];
+        $karyawan = Karyawan::select('nik', 'nama')->where($where)->orderBy('nama', 'asc')->get();
+        $shift = JadwalClsShift::orderBy('id', 'asc')->get();
+        return view( 'master.jadwal.cls.upsert', compact( 'trx', 'karyawan', 'shift', 'status' ) );
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        //
+        $trx = JadwalCls::find( $id );
+        $trx->nik = $request->nik;
+        $trx->id_shift = $request->id_shift;
+        // $trx->tanggal_awal = $request->tanggal_awal;
+        // $trx->tanggal_akhir = $request->tanggal_akhir;
+        $trx->update();
+        return redirect( 'jadwalcls/0' )->with( 'msg', 'Data is saved successfully.' );
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        //
+        $trx = JadwalCls::find( $id );
+        $trx->delete();
+        return redirect( 'jadwalcls/0' )->with( 'msg', 'Data is deleted successfully.' );
+    }
+    
+    public function generate(Request $request){
+        DB::update(DB::raw("UPDATE mtr_tbl_jadwal_cls SET tanggal_awal='".$request->tanggal_awal."',tanggal_akhir='".$request->tanggal_akhir."'"));
+        $arr = JadwalCls::orderBy( 'id_shift', 'asc' )->get();
+        // return response()->json( [ 'arr' => $arr ], 200 );
+        $jumlah = 0;
+        $wg_id = 11;
+        $wn_id = 1;
+        $startP = '00:00:00';
+        $endP = '08:00:00';
+        $startS = '08:00:00';
+        $endS = '16:00:00';
+        $startM = '16:00:00';
+        $endM = '00:00:00';
+        // echo $wg_id;
+        // echo '<br/>';
+        // echo $wn_id;
+        // echo '<br/>';
+        for ($x = 0; $x < sizeof($arr); $x++) {
+        // 	Shift Pagi ke-1
+            if($arr[$x]['id_shift']==1){
+                $loop_shift = array('P','P','L','L','M','M','S','S');
+                $uk_nik = $arr[$x]['nik'];
+                $this->deleteData($uk_nik, $request->tanggal_awal, $request->tanggal_akhir);
+                // echo $uk_nik.'-'.getNama($arr[$x]['nik']);
+                // echo '<br/>';
+                $i = 0;
+                while (strtotime($arr[$x]['tanggal_awal']) <= strtotime($arr[$x]['tanggal_akhir'])) {
+                    $cal_date = $arr[$x]['tanggal_awal'];
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($loop_shift[$i]=='P'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startP;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endP;
+                    }elseif($loop_shift[$i]=='S'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startS;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endS;
+                    }elseif($loop_shift[$i]=='M'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal']))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    if($loop_shift[$i]!='L'){
+                        $jumlah++;
+                        // echo '<br/>';
+                        // echo $cal_date;
+                        // echo '<br/>';
+                        // echo $loop_shift[$i];
+                        // echo '<br/>';
+                        // echo $wd_start_datetime;
+                        // echo '<br/>';
+                        // echo $wd_finish_datetime;
+                        // echo '<br/>';
+                        // echo $wd_bookout_closing;
+                        // echo '<br/>';
+                        // echo $wd_bookin_prepare;
+                        // echo '<br/>';
+                        // $this->deleteData($wg_id, $cal_date, $uk_nik);
+                        $this->insertData($wg_id, $wn_id, $cal_date, $uk_nik, $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                    $arr[$x]['tanggal_awal'] = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal'])));
+                    if($i==sizeof($loop_shift)-1){
+                        $i = 0;
+                    }else{
+                        $i++;
+                    }
+                }
+                // echo '<br/>';
+            }
+        // 	Shift Pagi ke-2
+            elseif($arr[$x]['id_shift']==2){
+                $loop_shift = array('P','L','L','M','M','S','S','P');
+                $uk_nik = $arr[$x]['nik'];
+                $this->deleteData($uk_nik, $request->tanggal_awal, $request->tanggal_akhir);
+                // echo $uk_nik.'-'.getNama($arr[$x]['nik']);
+                // echo '<br/>';
+                $i = 0;
+                while (strtotime($arr[$x]['tanggal_awal']) <= strtotime($arr[$x]['tanggal_akhir'])) {
+                    $cal_date = $arr[$x]['tanggal_awal'];
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($loop_shift[$i]=='P'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startP;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endP;
+                    }elseif($loop_shift[$i]=='S'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startS;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endS;
+                    }elseif($loop_shift[$i]=='M'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal']))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    if($loop_shift[$i]!='L'){
+                        $jumlah++;
+                        // echo '<br/>';
+                        // echo $cal_date;
+                        // echo '<br/>';
+                        // echo $loop_shift[$i];
+                        // echo '<br/>';
+                        // echo $wd_start_datetime;
+                        // echo '<br/>';
+                        // echo $wd_finish_datetime;
+                        // echo '<br/>';
+                        // echo $wd_bookout_closing;
+                        // echo '<br/>';
+                        // echo $wd_bookin_prepare;
+                        // echo '<br/>';
+                        // $this->deleteData($wg_id, $cal_date, $uk_nik);
+                        $this->insertData($wg_id, $wn_id, $cal_date, $uk_nik, $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                    $arr[$x]['tanggal_awal'] = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal'])));
+                    if($i==sizeof($loop_shift)-1){
+                        $i = 0;
+                    }else{
+                        $i++;
+                    }
+                }
+                // echo '<br/>';
+            }
+        // 	Libur ke-1
+            elseif($arr[$x]['id_shift']==7){
+                $loop_shift = array('L','L','M','M','S','S','P','P');
+                $uk_nik = $arr[$x]['nik'];
+                $this->deleteData($uk_nik, $request->tanggal_awal, $request->tanggal_akhir);
+                // echo $uk_nik.'-'.getNama($arr[$x]['nik']);
+                // echo '<br/>';
+                $i = 0;
+                while (strtotime($arr[$x]['tanggal_awal']) <= strtotime($arr[$x]['tanggal_akhir'])) {
+                    $cal_date = $arr[$x]['tanggal_awal'];
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($loop_shift[$i]=='P'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startP;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endP;
+                    }elseif($loop_shift[$i]=='S'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startS;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endS;
+                    }elseif($loop_shift[$i]=='M'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal']))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    if($loop_shift[$i]!='L'){
+                        $jumlah++;
+                        // echo '<br/>';
+                        // echo $cal_date;
+                        // echo '<br/>';
+                        // echo $loop_shift[$i];
+                        // echo '<br/>';
+                        // echo $wd_start_datetime;
+                        // echo '<br/>';
+                        // echo $wd_finish_datetime;
+                        // echo '<br/>';
+                        // echo $wd_bookout_closing;
+                        // echo '<br/>';
+                        // echo $wd_bookin_prepare;
+                        // echo '<br/>';
+                        // $this->deleteData($wg_id, $cal_date, $uk_nik);
+                        $this->insertData($wg_id, $wn_id, $cal_date, $uk_nik, $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                    $arr[$x]['tanggal_awal'] = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal'])));
+                    if($i==sizeof($loop_shift)-1){
+                        $i = 0;
+                    }else{
+                        $i++;
+                    }
+                }
+                // echo '<br/>';
+            }
+        // 	Libur ke-2
+            elseif($arr[$x]['id_shift']==8){
+                $loop_shift = array('L','M','M','S','S','P','P','L');
+                $uk_nik = $arr[$x]['nik'];
+                $this->deleteData($uk_nik, $request->tanggal_awal, $request->tanggal_akhir);
+                // echo $uk_nik.'-'.getNama($arr[$x]['nik']);
+                // echo '<br/>';
+                $i = 0;
+                while (strtotime($arr[$x]['tanggal_awal']) <= strtotime($arr[$x]['tanggal_akhir'])) {
+                    $cal_date = $arr[$x]['tanggal_awal'];
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($loop_shift[$i]=='P'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startP;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endP;
+                    }elseif($loop_shift[$i]=='S'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startS;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endS;
+                    }elseif($loop_shift[$i]=='M'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal']))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    if($loop_shift[$i]!='L'){
+                        $jumlah++;
+                        // echo '<br/>';
+                        // echo $cal_date;
+                        // echo '<br/>';
+                        // echo $loop_shift[$i];
+                        // echo '<br/>';
+                        // echo $wd_start_datetime;
+                        // echo '<br/>';
+                        // echo $wd_finish_datetime;
+                        // echo '<br/>';
+                        // echo $wd_bookout_closing;
+                        // echo '<br/>';
+                        // echo $wd_bookin_prepare;
+                        // echo '<br/>';
+                        // $this->deleteData($wg_id, $cal_date, $uk_nik);
+                        $this->insertData($wg_id, $wn_id, $cal_date, $uk_nik, $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                    $arr[$x]['tanggal_awal'] = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal'])));
+                    if($i==sizeof($loop_shift)-1){
+                        $i = 0;
+                    }else{
+                        $i++;
+                    }
+                }
+                // echo '<br/>';
+            }
+        // 	Shift Malam ke-1
+            elseif($arr[$x]['id_shift']==5){
+                $loop_shift = array('M','M','S','S','P','P','L','L');
+                $uk_nik = $arr[$x]['nik'];
+                $this->deleteData($uk_nik, $request->tanggal_awal, $request->tanggal_akhir);
+                // echo $uk_nik.'-'.getNama($arr[$x]['nik']);
+                // echo '<br/>';
+                $i = 0;
+                while (strtotime($arr[$x]['tanggal_awal']) <= strtotime($arr[$x]['tanggal_akhir'])) {
+                    $cal_date = $arr[$x]['tanggal_awal'];
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($loop_shift[$i]=='P'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startP;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endP;
+                    }elseif($loop_shift[$i]=='S'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startS;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endS;
+                    }elseif($loop_shift[$i]=='M'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal']))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    if($loop_shift[$i]!='L'){
+                        $jumlah++;
+                        // echo '<br/>';
+                        // echo $cal_date;
+                        // echo '<br/>';
+                        // echo $loop_shift[$i];
+                        // echo '<br/>';
+                        // echo $wd_start_datetime;
+                        // echo '<br/>';
+                        // echo $wd_finish_datetime;
+                        // echo '<br/>';
+                        // echo $wd_bookout_closing;
+                        // echo '<br/>';
+                        // echo $wd_bookin_prepare;
+                        // echo '<br/>';
+                        // $this->deleteData($wg_id, $cal_date, $uk_nik);
+                        $this->insertData($wg_id, $wn_id, $cal_date, $uk_nik, $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                    $arr[$x]['tanggal_awal'] = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal'])));
+                    if($i==sizeof($loop_shift)-1){
+                        $i = 0;
+                    }else{
+                        $i++;
+                    }
+                }
+                // echo '<br/>';
+            }
+        // 	Shift Malam ke-2
+            elseif($arr[$x]['id_shift']==6){
+                $loop_shift = array('M','S','S','P','P','L','L','M');
+                $uk_nik = $arr[$x]['nik'];
+                $this->deleteData($uk_nik, $request->tanggal_awal, $request->tanggal_akhir);
+                // echo $uk_nik.'-'.getNama($arr[$x]['nik']);
+                // echo '<br/>';
+                $i = 0;
+                while (strtotime($arr[$x]['tanggal_awal']) <= strtotime($arr[$x]['tanggal_akhir'])) {
+                    $cal_date = $arr[$x]['tanggal_awal'];
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($loop_shift[$i]=='P'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startP;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endP;
+                    }elseif($loop_shift[$i]=='S'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startS;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endS;
+                    }elseif($loop_shift[$i]=='M'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal']))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    if($loop_shift[$i]!='L'){
+                        $jumlah++;
+                        // echo '<br/>';
+                        // echo $cal_date;
+                        // echo '<br/>';
+                        // echo $loop_shift[$i];
+                        // echo '<br/>';
+                        // echo $wd_start_datetime;
+                        // echo '<br/>';
+                        // echo $wd_finish_datetime;
+                        // echo '<br/>';
+                        // echo $wd_bookout_closing;
+                        // echo '<br/>';
+                        // echo $wd_bookin_prepare;
+                        // echo '<br/>';
+                        // $this->deleteData($wg_id, $cal_date, $uk_nik);
+                        $this->insertData($wg_id, $wn_id, $cal_date, $uk_nik, $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                    $arr[$x]['tanggal_awal'] = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal'])));
+                    if($i==sizeof($loop_shift)-1){
+                        $i = 0;
+                    }else{
+                        $i++;
+                    }
+                }
+                // echo '<br/>';
+            }
+        // 	Shift Siang ke-1
+            elseif($arr[$x]['id_shift']==3){
+                $loop_shift = array('S','S','P','P','L','L','M','M');
+                $uk_nik = $arr[$x]['nik'];
+                $this->deleteData($uk_nik, $request->tanggal_awal, $request->tanggal_akhir);
+                // echo $uk_nik.'-'.getNama($arr[$x]['nik']);
+                // echo '<br/>';
+                $i = 0;
+                while (strtotime($arr[$x]['tanggal_awal']) <= strtotime($arr[$x]['tanggal_akhir'])) {
+                    $cal_date = $arr[$x]['tanggal_awal'];
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($loop_shift[$i]=='P'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startP;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endP;
+                    }elseif($loop_shift[$i]=='S'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startS;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endS;
+                    }elseif($loop_shift[$i]=='M'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal']))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    if($loop_shift[$i]!='L'){
+                        $jumlah++;
+                        // echo '<br/>';
+                        // echo $cal_date;
+                        // echo '<br/>';
+                        // echo $loop_shift[$i];
+                        // echo '<br/>';
+                        // echo $wd_start_datetime;
+                        // echo '<br/>';
+                        // echo $wd_finish_datetime;
+                        // echo '<br/>';
+                        // echo $wd_bookout_closing;
+                        // echo '<br/>';
+                        // echo $wd_bookin_prepare;
+                        // echo '<br/>';
+                        // $this->deleteData($wg_id, $cal_date, $uk_nik);
+                        $this->insertData($wg_id, $wn_id, $cal_date, $uk_nik, $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                    $arr[$x]['tanggal_awal'] = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal'])));
+                    if($i==sizeof($loop_shift)-1){
+                        $i = 0;
+                    }else{
+                        $i++;
+                    }
+                }
+                // echo '<br/>';
+            }
+        // 	Shift Siang ke-2
+            elseif($arr[$x]['id_shift']==4){
+                $loop_shift = array('S','P','P','L','L','M','M','S');
+                $uk_nik = $arr[$x]['nik'];
+                $this->deleteData($uk_nik, $request->tanggal_awal, $request->tanggal_akhir);
+                // echo $uk_nik.'-'.getNama($arr[$x]['nik']);
+                // echo '<br/>';
+                $i = 0;
+                while (strtotime($arr[$x]['tanggal_awal']) <= strtotime($arr[$x]['tanggal_akhir'])) {
+                    $cal_date = $arr[$x]['tanggal_awal'];
+                    $wd_start_datetime = '';
+                    $wd_finish_datetime = '';
+                    if($loop_shift[$i]=='P'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startP;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endP;
+                    }elseif($loop_shift[$i]=='S'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startS;
+                        $wd_finish_datetime = $arr[$x]['tanggal_awal'].' '.$endS;
+                    }elseif($loop_shift[$i]=='M'){
+                        $wd_start_datetime = $arr[$x]['tanggal_awal'].' '.$startM;
+                        $wd_finish_datetime = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal']))).' '.$endM;
+                    }
+                    $wd_bookout_closing = date ("Y-m-d H:i:s", strtotime("+3 hours", strtotime($wd_finish_datetime)));
+                    $wd_bookin_prepare = date ("Y-m-d H:i:s", strtotime("-1 hours", strtotime($wd_start_datetime)));
+                    if($loop_shift[$i]!='L'){
+                        $jumlah++;
+                        // echo '<br/>';
+                        // echo $cal_date;
+                        // echo '<br/>';
+                        // echo $loop_shift[$i];
+                        // echo '<br/>';
+                        // echo $wd_start_datetime;
+                        // echo '<br/>';
+                        // echo $wd_finish_datetime;
+                        // echo '<br/>';
+                        // echo $wd_bookout_closing;
+                        // echo '<br/>';
+                        // echo $wd_bookin_prepare;
+                        // echo '<br/>';
+                        // $this->deleteData($wg_id, $cal_date, $uk_nik);
+                        $this->insertData($wg_id, $wn_id, $cal_date, $uk_nik, $wd_start_datetime, $wd_finish_datetime, $wd_bookout_closing, $wd_bookin_prepare);
+                    }
+                    $arr[$x]['tanggal_awal'] = date ("Y-m-d", strtotime("+1 days", strtotime($arr[$x]['tanggal_awal'])));
+                    if($i==sizeof($loop_shift)-1){
+                        $i = 0;
+                    }else{
+                        $i++;
+                    }
+                }
+                // echo '<br/>';
+            }
+        }
+        // $trx = $this->deleteData(2, 'CV0016203', '2020-09-07');
+        // return response()->json( [ 'arr' => $arr ], 200 );
+        return redirect( 'jadwalcls' )->with( 'msg', 'Data is saved successfully.' );
+    }
+    
+    // public function deleteData($wg_id, $working_date, $nik){
+    //     return DB::delete(DB::raw("DELETE FROM trx_tbl_working_day WHERE wg_id=".$wg_id." AND nik='".$nik."' AND working_date='".$working_date."'"));
+    // }
+    
+    public function deleteData($nik, $tanggal_awal, $tanggal_akhir){
+        return DB::delete(DB::raw("DELETE FROM trx_tbl_working_day WHERE nik='".$nik."' AND working_date BETWEEN '".$tanggal_awal."' AND '".$tanggal_akhir."'"));
+    }
+    
+    public function insertData($wg_id, $shift, $working_date, $nik, $clockin, $clockout, $end_clockout, $start_clockin){
+        $trx = New WorkingDay;
+        $trx->wg_id = $wg_id;
+        $trx->shift = $shift;
+        $trx->nik = $nik;
+        $trx->working_date = $working_date;
+        $trx->clockin = $clockin;
+        $trx->clockout = $clockout;
+        $trx->start_clockin = $start_clockin;
+        $trx->end_clockin = $clockout;
+        $trx->start_clockout = $clockout;
+        $trx->end_clockout = $end_clockout;
+        $trx->save();
+    }
+}

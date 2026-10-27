@@ -1,0 +1,307 @@
+
+
+<?php $__env->startSection('title', 'Formulir Izin'); ?>
+
+<?php $__env->startSection('css'); ?>
+<link rel="stylesheet" type="text/css" href="<?php echo e(asset('assets/css/vendors/datatables.css')); ?>">
+<link rel="stylesheet" type="text/css" href="<?php echo e(asset('assets/css/vendors/datatable-extension.css')); ?>">
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('style'); ?>
+<style>
+    button.dt-button {
+    float:none;
+    text-align:center;
+    color: black;
+    background: white;
+    }
+</style>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('breadcrumb-title'); ?>
+<h3>To Do List Recap</h3>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('breadcrumb-items'); ?>
+<li class="breadcrumb-item">To Do List</li>
+<li class="breadcrumb-item active">Recap</li>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('content'); ?>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="card">
+                <div class="card-body">
+                    <button class="btn btn-warning" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_filter" aria-expanded="false" aria-controls="collapse_filter"><i class="fa fa-search" aria-hidden="true"></i> Filter</button>
+                    <div class="collapse" id="collapse_filter">
+                        <form class="mt-2" action="<?php echo e(route('todolist.recap', 0)); ?>" method="get" enctype="multipart/form-data">
+                            <div class="row mt-2">
+                                <div class="col-sm-6">
+                                    <label class="h6">Formulir</label>&nbsp;<input type="checkbox"
+                                        onClick="toggle_title(this)" /> Check All
+                                    <label class="d-block" for="title">
+                                        <?php $__currentLoopData = $title; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <input class="checkbox_animated" id="title[]" name="title[]" type="checkbox" value="<?php echo e($data->title); ?>" <?php if(in_array($data->title, $arr_title)): ?> checked <?php endif; ?>>
+                                            <?php echo e($data->title); ?><br />
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-sm-3">
+                                    <label class="h6">Perusahaan</label>&nbsp;<input type="checkbox"
+                                        onClick="toggle_perusahaan(this)" /> Check All
+                                    <label class="d-block" for="kode_perusahaan">
+                                        <?php $__currentLoopData = $perusahaan; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <input class="checkbox_animated" id="kode_perusahaan[]" name="kode_perusahaan[]" type="checkbox" onClick="get_kode_perusahaan()" value="<?php echo e($data->id); ?>" <?php if(in_array($data->id, $arr_perusahaan)): ?> checked <?php endif; ?>>
+                                            <?php echo e($data->nama); ?><br />
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                    </label>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label class="h6">Direktorat</label>&nbsp;<input type="checkbox"
+                                        onClick="toggle_divisi(this)" /> Check All
+                                    <label class="d-block" for="kode_divisi">
+                                        <div id="div_kode_divisi">
+                                            <?php $__currentLoopData = $divisi; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                <input class="checkbox_animated" id="kode_divisi[]" name="kode_divisi[]" type="checkbox" onClick="get_kode_divisi()" value="<?php echo e($data->id); ?>" <?php if(in_array($data->id, $arr_divisi)): ?> checked <?php endif; ?>>
+                                                <?php echo e($data->nama); ?><br />
+                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label class="h6">Divisi</label>&nbsp;<input type="checkbox"
+                                        onClick="toggle_kode_departemen(this)" /> Check All
+                                    <label class="d-block" for="kode_departemen">
+                                        <div id="div_kode_departemen">
+                                            <?php $__currentLoopData = $departemen; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                <input class="checkbox_animated" id="kode_departemen[]" name="kode_departemen[]" type="checkbox" onClick="get_kode_departemen()" value="<?php echo e($data->id); ?>" <?php if(in_array($data->id, $arr_departemen)): ?> checked <?php endif; ?>>
+                                                <?php echo e($data->nama); ?><br />
+                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label class="h6">Departemen</label>&nbsp;<input type="checkbox"
+                                        onClick="toggle_kode_sub_departemen(this)" /> Check All
+                                    <label class="d-block" for="kode_sub_departemen">
+                                        <div id="div_kode_sub_departemen">
+                                            <?php $__currentLoopData = $sub_departemen; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                <input class="checkbox_animated" id="kode_sub_departemen[]" name="kode_sub_departemen[]" type="checkbox" value="<?php echo e($data->id); ?>" <?php if(in_array($data->id, $arr_sub_departemen)): ?> checked <?php endif; ?>>
+                                                <?php echo e($data->nama); ?><br />
+                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-sm-12">
+                                    <button class="btn btn-warning" id="filter" name="filter" value="true" type="submit"><i class="fa fa-search" aria-hidden="true"></i> Filter</button> | <button class="btn btn-info" id="reset" name="reset" value="true" type="submit"><i class="fa fa-refresh" aria-hidden="true"></i> Reset</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="table-responsive mt-2">
+                        <table class="display" id="_datatable">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Action</th>
+                                    <th>Jumlah</th>
+                                    <th>NIP Karyawan</th>
+                                    <th>Karyawan</th>
+                                    <th>Perusahaan</th>
+                                    <th>Direktorat</th>
+                                    <th>Divisi</th>
+                                    <th>Departemen</th>
+                                    <th>Formulir</th>
+                                </tr>
+                            </thead>
+                            <?php $no = 0; ?>
+                            <tbody>
+                                <?php $__currentLoopData = $trx; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $data): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <tr>
+                                    <td><?php echo e(++$no); ?></td>
+                                    <td><a target="_blank" href="<?php echo e(route('todolist.recap.detail', [0, 'nik'=>(new App\Http\Controllers\OpenDataController)->encryptWithKey($data->nik), 'title'=>(new App\Http\Controllers\OpenDataController)->encryptWithKey($data->title)])); ?>" data-toggle="tooltip" title="Detail"><i class="icon-eye"></i></a></td>
+                                    <td><?php echo e($data->jumlah); ?></td>
+                                    <td><?php echo e($data->nik); ?></td>
+                                    <td><?php echo e($data->_nik->nama); ?></td>
+                                    <td><?php echo e($data->_nik->_perusahaan->nama); ?></td>
+                                    <td><?php echo e($data->_nik->_divisi->nama); ?></td>
+                                    <td><?php echo e($data->_nik->_departemen->nama); ?></td>
+                                    <td><?php echo e($data->_nik->_subdepartemen->nama); ?></td>
+                                    <td><?php echo e($data->title); ?></td>
+                                </tr>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startSection('script'); ?>
+<script src="<?php echo e(asset('assets/js/datatable/datatables/jquery.dataTables.min.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/datatable/datatables/datatable.custom.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/datatable/datatable-extension/dataTables.buttons.min.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/datatable/datatable-extension/jszip.min.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/datatable/datatable-extension/pdfmake.min.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/datatable/datatable-extension/vfs_fonts.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/datatable/datatable-extension/buttons.html5.min.js')); ?>"></script>
+<script src="<?php echo e(asset('assets/js/datatable/datatable-extension/buttons.print.min.js')); ?>"></script>
+<script type="text/javascript">
+// 
+function get_kode_perusahaan() {
+    getDivisi();
+}
+// 
+function get_kode_divisi() {
+    getDepartemen();
+}
+// 
+function get_kode_departemen() {
+    getSubDepartemen();
+}
+// 
+function toggle_title(source) {
+    checkboxes = document.getElementsByName('title[]');
+    for (var i = 0, n = checkboxes.length; i < n; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+}
+// 
+function toggle_perusahaan(source) {
+    checkboxes = document.getElementsByName('kode_perusahaan[]');
+    for (var i = 0, n = checkboxes.length; i < n; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+    getDivisi();
+}
+// 
+function toggle_divisi(source) {
+    checkboxes = document.getElementsByName('kode_divisi[]');
+    for (var i = 0, n = checkboxes.length; i < n; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+    getDepartemen();
+}
+// 
+function toggle_kode_departemen(source) {
+    checkboxes = document.getElementsByName('kode_departemen[]');
+    for (var i = 0, n = checkboxes.length; i < n; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+    getSubDepartemen();
+}
+// 
+function toggle_kode_sub_departemen(source) {
+    checkboxes = document.getElementsByName('kode_sub_departemen[]');
+    for (var i = 0, n = checkboxes.length; i < n; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+}
+// 
+function getDivisi() {
+    var _kode_perusahaan = [];
+    $('input[id="kode_perusahaan[]"]:checked').each(function() {
+        _kode_perusahaan.push($(this).val());
+    });
+    $('#div_kode_divisi').empty();
+    $('#div_kode_departemen').empty();
+    $('#div_kode_sub_departemen').empty();
+    // AJAX request 
+    $.ajax({
+        url: "<?php echo e(route('getDivisi')); ?>" + "/" + _kode_perusahaan,
+        type: 'get',
+        dataType: 'json',
+        success: function(response) {
+            var len = 0;
+            if (response != null) {
+                len = response.length;
+            }
+            if (len > 0) {
+                for (var i = 0; i < len; i++) {
+                    var id = response[i]['id'];
+                    var nama = response[i]['nama'];
+                    var option = "<input class='checkbox_animated' id='kode_divisi[]' name='kode_divisi[]' type='checkbox' onClick='get_kode_divisi()' value='" + id + "'> " + nama + "<br/>";
+                    $("#div_kode_divisi").append(option);
+                }
+            }
+        }
+    });
+}
+// 
+function getDepartemen() {
+    var _kode_divisi = [];
+    $('input[id="kode_divisi[]"]:checked').each(function() {
+        _kode_divisi.push($(this).val());
+    });
+    $('#div_kode_departemen').empty();
+    $('#div_kode_sub_departemen').empty();
+    $.ajax({
+        url: "<?php echo e(route('getDepartemen')); ?>" + "/" + _kode_divisi,
+        type: 'get',
+        dataType: 'json',
+        success: function(response) {
+            var len = 0;
+            if (response != null) {
+                len = response.length;
+            }
+            if (len > 0) {
+                for (var i = 0; i < len; i++) {
+                    var id = response[i]['id'];
+                    var nama = response[i]['nama'];
+                    var option = "<input class='checkbox_animated' id='kode_departemen[]' name='kode_departemen[]' type='checkbox' onClick='get_kode_departemen()' value='" + id + "'> " + nama + "<br/>";
+                    $("#div_kode_departemen").append(option);
+                }
+            }
+        }
+    });
+}
+// 
+function getSubDepartemen() {
+    var _kode_departemen = [];
+    $('input[id="kode_departemen[]"]:checked').each(function() {
+        _kode_departemen.push($(this).val());
+    });
+    $('#div_kode_sub_departemen').empty();
+    $.ajax({
+        url: "<?php echo e(route('getSubDepartemen')); ?>" + "/" + _kode_departemen,
+        type: 'get',
+        dataType: 'json',
+        success: function(response) {
+            var len = 0;
+            if (response != null) {
+                len = response.length;
+            }
+            if (len > 0) {
+                for (var i = 0; i < len; i++) {
+                    var id = response[i]['id'];
+                    var nama = response[i]['nama'];
+                    var option = "<input class='checkbox_animated' id='kode_sub_departemen[]' name='kode_sub_departemen[]' type='checkbox' value='" + id + "'> " + nama + "<br/>";
+                    $("#div_kode_sub_departemen").append(option);
+                }
+            }
+        }
+    });
+}
+// 
+$('#_datatable').DataTable({
+    // dom: 'lBfrtip',
+    dom: "<'row'<'col-sm-4'l><'col-sm-4 text-center'B><'col-sm-4'f>>" + "<'row'<'col-sm-12'rt>>" + "<'row'<'col-sm-5'i><'col-sm-7'p>>",
+    buttons: [
+        'copy', 'csv', 'excel', 'pdf', 'print'
+    ],
+    "lengthMenu": [
+        [50, 100, 200, 500, -1],
+        [50, 100, 200, 500, "All"]
+    ]
+});
+</script>
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.simple.master', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\matta_dev\resources\views/todolist/recap.blade.php ENDPATH**/ ?>

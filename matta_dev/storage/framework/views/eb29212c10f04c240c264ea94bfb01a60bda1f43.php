@@ -1,0 +1,9 @@
+<p>Yth. <?php echo e($data['trx']->nama); ?>,<br/>Dengan hormat,</p>
+<p>Kami mengucapkan terima kasih atas minat dan keterbukaan Bapak/Ibu/Saudara/i <?php echo e($data['trx']->nama); ?> untuk bergabung bersama PT. Alita Praya Mitra serta kesediaan dalam diskusi terkait penawaran untuk posisi <?php echo e($data['posisi']); ?>.</p>
+<p>Saat ini, kami ingin melanjutkan proses <?php if($data['trx']->id_status == 12): ?> negosiasi <?php elseif($data['trx']->id_status == 21): ?> negosiasi kembali <?php endif; ?> mengenai beberapa poin utama dalam penawaran kerja ini. Kami terbuka untuk membahas lebih lanjut perihal rincian tanggung jawab, kompensasi, serta manfaat lainnya agar dapat mencapai kesepakatan untuk kedua belah pihak.</p>
+<p>Selanjutnya silahkan klik link <b>PENAWARAN</b> dibawah ini untuk mengetahui penawaran yang kami berikan, kemudian silahkan pilih tombol Setuju atau Tidak Setuju. Berikan catatan dan lampiran jika dibutuhkan terhadap penawaran yang kami berikan ini.</p>
+<p><a href="<?php echo e(route('recruitment.negotiation_process', [Crypt::encrypt(array($data['trx']->id, 'negotiation'))])); ?>" data-toggle="tooltip" title='Link Penawaran'>PENAWARAN</a></p>
+<p>Kami persilahkan Bapak/Ibu/Saudara/i untuk menginformasikan waktu kepada kami, dengan menghubungi tim kami, guna melanjutkan diskusi ini atau menyampaikan hal-hal yang ingin dibahas terlebih dahulu. Kami berharap proses ini dapat berjalan lancar dan mencapai kesepakatan terbaik.</p>
+<p>Terima kasih,</p>
+
+<?php echo $__env->make('emails.footer0', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\xampp\htdocs\matta\resources\views/emails/recruitment3.blade.php ENDPATH**/ ?>
